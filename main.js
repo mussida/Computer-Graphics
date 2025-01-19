@@ -92,12 +92,13 @@ async function main() {
   uniform mat4 u_projection;
   uniform mat4 u_view;
   uniform mat4 u_world;
+  uniform mat4 u_worldInverseTranspose;
 
   varying vec3 v_normal;
 
   void main() {
     gl_Position = u_projection * u_view * u_world * a_position;
-    v_normal = mat3(u_world) * a_normal;
+    v_normal = mat3(u_worldInverseTranspose) * a_normal;
   }
   `;
 
@@ -111,8 +112,8 @@ async function main() {
 
   void main () {
     vec3 normal = normalize(v_normal);
-    float fakeLight = dot(u_lightDirection, normal) * .5 + .5;
-    gl_FragColor = vec4(u_diffuse.rgb * fakeLight, u_diffuse.a);
+    float light = max(dot(u_lightDirection, normal), 0.0);
+    gl_FragColor = vec4(u_diffuse.rgb * light, u_diffuse.a);
   }
   `;
 
@@ -207,8 +208,28 @@ async function main() {
     const camera = m4.lookAt(cameraPosition, cameraTarget, up);
     const view = m4.inverse(camera);
 
+    // const sharedUniforms = {
+    //   u_lightDirection: m4.normalize([-1, 3, 5]),
+    //   u_view: view,
+    //   u_projection: projection,
+    // };
+
+    // gl.useProgram(meshProgramInfo.program);
+    // webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
+    // webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
+
+    // Applica la rotazione al modello in base all'input dell'utente
+    const modelMatrix = m4.multiply(
+      m4.xRotation(rotation[0]),
+      m4.yRotation(rotation[1])
+    );
+
+    const worldMatrix = m4.multiply(modelMatrix, m4.scaling(0.5, 0.5, 0.5));
+    const worldInverseMatrix = m4.inverse(worldMatrix);
+    const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
+
     const sharedUniforms = {
-      u_lightDirection: m4.normalize([-1, 3, 5]),
+      u_lightDirection: m4.normalize([0, 1, 0]), // Luce dall'alto
       u_view: view,
       u_projection: projection,
     };
@@ -217,14 +238,9 @@ async function main() {
     webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
     webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
 
-    // Applica la rotazione al modello in base all'input dell'utente
-    const modelMatrix = m4.multiply(
-      m4.xRotation(rotation[0]),
-      m4.yRotation(rotation[1])
-    );
-
     webglUtils.setUniforms(meshProgramInfo, {
-      u_world: m4.multiply(modelMatrix, m4.scaling(0.5, 0.5, 0.5)),
+      u_world: worldMatrix,
+      u_worldInverseTranspose: worldInverseTransposeMatrix,
       u_diffuse: [1, 0.7, 0.5, 1],
     });
 
