@@ -76,6 +76,12 @@ function parseOBJ(text) {
   };
 }
 
+async function loadMTL(url) {
+  const response = await fetch(url);
+  const text = await response.text();
+  return parseMTL(text);
+}
+
 async function main() {
   // Prende il canvas e il contesto WebGL
   /** @type {HTMLCanvasElement} */
@@ -120,7 +126,7 @@ async function main() {
   // compila i programmi shader e li collega
   const meshProgramInfo = webglUtils.createProgramInfo(gl, [vs, fs]);
 
-  const response = await fetch("assets/OGGETTO.obj");
+  const response = await fetch("assets/Low poly House.obj");
   const text = await response.text();
   const data = parseOBJ(text);
 
@@ -187,6 +193,20 @@ async function main() {
     e.preventDefault();
   });
 
+  // Imposta un limite per lo zoom
+  const minZoom = 5; // Distanza minima della camera
+  const maxZoom = 50; // Distanza massima della camera
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault(); // Evita lo scroll della pagina
+
+    const zoomSpeed = 1; // Sensibilità dello zoom
+    cameraPosition[2] += e.deltaY * 0.05 * zoomSpeed; // Modifica la posizione Z della camera
+
+    // Limita lo zoom per evitare di passare attraverso l'oggetto o allontanarsi troppo
+    cameraPosition[2] = Math.max(minZoom, Math.min(maxZoom, cameraPosition[2]));
+  });
+
   // Funzione per convertire gradi in radianti
   function degToRad(deg) {
     return (deg * Math.PI) / 180;
@@ -208,16 +228,6 @@ async function main() {
     const camera = m4.lookAt(cameraPosition, cameraTarget, up);
     const view = m4.inverse(camera);
 
-    // const sharedUniforms = {
-    //   u_lightDirection: m4.normalize([-1, 3, 5]),
-    //   u_view: view,
-    //   u_projection: projection,
-    // };
-
-    // gl.useProgram(meshProgramInfo.program);
-    // webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
-    // webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
-
     // Applica la rotazione al modello in base all'input dell'utente
     const modelMatrix = m4.multiply(
       m4.xRotation(rotation[0]),
@@ -229,7 +239,7 @@ async function main() {
     const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
 
     const sharedUniforms = {
-      u_lightDirection: m4.normalize([0, 1, 0]), // Luce dall'alto
+      u_lightDirection: m4.normalize([0, 1, 1]), // Luce dall'alto
       u_view: view,
       u_projection: projection,
     };
