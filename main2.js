@@ -26,7 +26,7 @@ async function main() {
   console.log("WebGL inizializzato con successo!");
 
   const vs = `
-  attribute vec3 a_position;
+  attribute vec4 a_position;
   attribute vec3 a_normal;
   attribute vec2 a_texcoord;
   attribute vec4 a_color;
@@ -40,13 +40,12 @@ async function main() {
   varying vec3 v_surfaceToView;
   varying vec2 v_texcoord;
   varying vec4 v_color;
-  varying vec3 vertPos;
 
   void main() {
-    vec4 vertPos4 = u_world * vec4(a_position, 1.0); 
-    vertPos = vec3(vertPos4) / vertPos4.w;            
-    v_normal = vec3(u_world * vec4(a_normal, 0.0));   
-    gl_Position = u_projection * u_view * vertPos4;   
+    vec4 worldPosition = u_world * a_position;
+    gl_Position = u_projection * u_view * worldPosition;
+    v_surfaceToView = u_viewWorldPosition - worldPosition.xyz;
+    v_normal = mat3(u_world) * a_normal;
     v_texcoord = a_texcoord;
     v_color = a_color;
   }
@@ -57,68 +56,40 @@ async function main() {
 
   varying vec3 v_normal;
   varying vec3 v_surfaceToView;
-  varying vec3 vertPos;
   varying vec2 v_texcoord;
   varying vec4 v_color;
 
-  uniform vec3 lightPos;
-  uniform vec3 u_ambientLight;
-  uniform float shininessAmbient;
-  
   uniform vec3 diffuse;
+  uniform sampler2D diffuseMap;
   uniform vec3 ambient;
   uniform vec3 emissive;
   uniform vec3 specular;
   uniform float shininess;
   uniform float opacity;
-
-  uniform float Ka;
-  uniform float Kd;
-  uniform float Ks;
-
-  uniform int mode;
-
-  uniform sampler2D diffuseMap;
-  uniform sampler2D specularMap;
+  uniform vec3 u_lightDirection;
+  uniform vec3 u_ambientLight;
 
   void main () {
-    vec3 N = normalize(v_normal);
-    vec3 L = normalize(lightPos - vertPos);
-    float lambertian = max(dot(N, L), 0.0);
-    float specularLight = 0.0;
+    vec3 normal = normalize(v_normal);
 
-    if (lambertian > 0.0) {
-        vec3 R = reflect(-L, N);      // Reflected light vector
-        vec3 V = normalize(-vertPos); // Vector to viewer
-        float specAngle = max(dot(R, V), 0.0);
-        specularLight = pow(specAngle, shininessAmbient);
-    }
+    vec3 surfaceToViewDirection = normalize(v_surfaceToView);
+    vec3 halfVector = normalize(u_lightDirection + surfaceToViewDirection);
 
-    // Leggi la mappa di diffusione e combina con il colore dell'oggetto
+    float fakeLight = dot(u_lightDirection, normal) * .5 + .5;
+    float specularLight = clamp(dot(normal, halfVector), 0.0, 1.0);
+
     vec4 diffuseMapColor = texture2D(diffuseMap, v_texcoord);
     vec3 effectiveDiffuse = diffuse * diffuseMapColor.rgb * v_color.rgb;
+    float effectiveOpacity = opacity * diffuseMapColor.a * v_color.a;
 
-    // Leggi la mappa di specularità
-    vec4 specularMapColor = texture2D(specularMap, v_texcoord);
-    vec3 effectiveSpecular = specularMapColor.rgb * specularLight * specular;
-
-    // Calcola il colore finale
     gl_FragColor = vec4(
-      Ka * ambient + 
-      Kd * lambertian * effectiveDiffuse + 
-      Ks * effectiveSpecular + emissive, 
-      diffuseMapColor.a * v_color.a * opacity 
-    );
-
-   // only ambient
-  if(mode == 2) gl_FragColor = vec4(Ka * u_ambientLight, 1.0);
-  // only diffuse
-  if(mode == 3) gl_FragColor = vec4(Kd * lambertian * diffuse, 1.0);
-  // only specular
-  if(mode == 4) gl_FragColor = vec4(Ks * specularLight * specular, 1.0);
-
+        emissive +
+        ambient * u_ambientLight +
+        effectiveDiffuse * fakeLight +
+        specular * pow(specularLight, shininess),
+        effectiveOpacity);
   }
-`;
+  `;
 
   // compila i programmi shader e li collega
   const meshProgramInfo = webglUtils.createProgramInfo(gl, [vs, fs]);
@@ -144,7 +115,6 @@ async function main() {
 
   // carica le texture e le associa ai materiali
   for (const material of Object.values(materials)) {
-    console.log(material);
     Object.entries(material)
       .filter(([key]) => key.endsWith("Map"))
       .forEach(([key, filename]) => {
@@ -161,19 +131,33 @@ async function main() {
   const defaultMaterial = {
     diffuse: [1, 1, 1],
     diffuseMap: textures.defaultWhite,
-    ambient: [0.0, 0.0, 0.0],
+    ambient: [0, 0, 0],
     specular: [1, 1, 1],
     shininess: 400,
     opacity: 1,
-    emissive: [0, 0, 0],
   };
 
   const parts = obj.geometries.map(({ material, data }) => {
+    // Because data is just named arrays like this
+    //
+    // {
+    //   position: [...],
+    //   texcoord: [...],
+    //   normal: [...],
+    // }
+    //
+    // and because those names match the attributes in our vertex
+    // shader we can pass it directly into `createBufferInfoFromArrays`
+    // from the article "less code more fun".
+
     if (data.color) {
       if (data.position.length === data.color.length) {
+        // it's 3. The our helper library assumes 4 so we need
+        // to tell it there are only 3.
         data.color = { numComponents: 3, data: data.color };
       }
     } else {
+      // there are no vertex colors so just use constant white
       data.color = { value: [1, 1, 1, 1] };
     }
 
@@ -225,6 +209,9 @@ async function main() {
     m4.addVectors(extents.min, m4.scaleVector(range, 0.5)),
     -1
   );
+
+  // Crea un buffer info dai dati OBJ
+  // const bufferInfo = webglUtils.createBufferInfoFromArrays(gl, data);
 
   // Impostazioni della camera
   const cameraPosition = [0, 0, 20]; // Posizione della camera
@@ -285,111 +272,6 @@ async function main() {
     e.preventDefault();
   });
 
-  // Variabile globale per la posizione Y della luce
-  let lightPosY = 20.0; // Valore iniziale
-
-  // Trova l'elemento input range per la posizione della luce
-  const lightPosRange = document.getElementById("lightPosRange");
-
-  // Aggiungi un event listener per l'input range
-  lightPosRange.addEventListener("input", (event) => {
-    console.log("shininess", parseFloat(event.target.value));
-    lightPosY = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
-  });
-
-  // Funzione di aggiornamento della luce (esempio)
-  function updateLighting() {
-    // Qui puoi usare il nuovo valore di lightPosY per aggiornare la scena 3D
-    console.log("Updated lightPos in sharedUniforms:", lightPosY);
-
-    // Aggiorna gli uniformi nel WebGL
-    gl.useProgram(meshProgramInfo.program);
-    webglUtils.setUniforms(meshProgramInfo, {
-      u_view: view,
-      u_projection: projection,
-      u_viewWorldPosition: cameraPosition,
-      lightPos: [0.0, lightPosY, 20.0],
-      ambient: [0.0, 0.0, 0.0],
-      Ka: 1.0,
-      Kd: 1.0,
-      Ks: 1.0,
-      shininessAmbient: 100.0,
-    });
-  }
-
-  // Funzione per convertire gradi in radianti
-  function degToRad(deg) {
-    return (deg * Math.PI) / 180;
-  }
-
-  // Render function
-  function render() {
-    webglUtils.resizeCanvasToDisplaySize(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.enable(gl.DEPTH_TEST);
-
-    gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const fieldOfViewRadians = degToRad(100);
-    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-    const projection = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
-
-    const up = [0, 1, 0];
-    // Compute the camera's matrix using look at.
-    const camera = m4.lookAt(cameraPosition, cameraTarget, up);
-
-    // Make a view matrix from the camera matrix.
-    const view = m4.inverse(camera);
-
-    // Applica la rotazione al modello in base all'input dell'utente
-    const modelMatrix = m4.multiply(
-      m4.xRotation(rotation[0]),
-      m4.yRotation(rotation[1])
-    );
-
-    const worldMatrix = m4.multiply(modelMatrix, m4.scaling(0.5, 0.5, 0.5));
-    const worldInverseMatrix = m4.inverse(worldMatrix);
-    const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
-
-    const sharedUniforms = {
-      u_view: view,
-      u_projection: projection,
-      u_viewWorldPosition: cameraPosition,
-      lightPos: [0.0, lightPosY, 20.0], // Usa la variabile globale lightPosY
-      ambient: [0.0, 0.0, 0.0],
-      Ka: 1.0,
-      Kd: 1.0,
-      Ks: 1.0,
-      shininessAmbient: 100.0,
-    };
-
-    gl.useProgram(meshProgramInfo.program);
-
-    // calls gl.uniform
-    webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
-
-    // compute the world matrix once since all parts
-    // are at the same space.
-
-    webglUtils.setUniforms(meshProgramInfo, {
-      u_world: worldMatrix,
-      u_worldInverseTranspose: worldInverseTransposeMatrix,
-      diffuse: [1, 0.7, 0.5, 1],
-    });
-
-    for (const { bufferInfo, material } of parts) {
-      // calls gl.bindBuffer, gl.enableVertexAttribArray, gl.vertexAttribPointer
-      webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
-      // calls gl.uniform
-      webglUtils.setUniforms(meshProgramInfo, {}, material);
-      // calls gl.drawArrays or gl.drawElements
-      webglUtils.drawBufferInfo(gl, bufferInfo);
-    }
-    requestAnimationFrame(render);
-  }
-  requestAnimationFrame(render);
-
   // Imposta un limite per lo zoom
   const minZoom = 5; // Distanza minima della camera
   const maxZoom = 50; // Distanza massima della camera
@@ -440,14 +322,10 @@ async function main() {
     const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
 
     const sharedUniforms = {
+      u_lightDirection: m4.normalize([-1, 3, 5]),
       u_view: view,
       u_projection: projection,
-      lightPos: [0.0, lightPosY, 20.0],
-      ambient: [0.0, 0.0, 0.0],
-      Ka: 1.0,
-      Kd: 1.0,
-      Ks: 1.0,
-      shininessAmbient: 100.0,
+      u_viewWorldPosition: cameraPosition,
     };
 
     gl.useProgram(meshProgramInfo.program);
@@ -461,7 +339,7 @@ async function main() {
     webglUtils.setUniforms(meshProgramInfo, {
       u_world: worldMatrix,
       u_worldInverseTranspose: worldInverseTransposeMatrix,
-      diffuse: [1, 0.7, 0.5, 1],
+      u_diffuse: [1, 0.7, 0.5, 1],
     });
 
     for (const { bufferInfo, material } of parts) {

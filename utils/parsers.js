@@ -165,6 +165,7 @@ function parseMTL(text) {
   const keywords = {
     newmtl(parts, unparsedArgs) {
       material = {};
+      // Memorizza il materiale con il nome unparsedArgs (che è il nome del materiale)
       materials[unparsedArgs] = material;
     },
     /* eslint brace-style:0 */
@@ -226,3 +227,4 @@ function parseMTL(text) {
 
   return materials;
 }
+
