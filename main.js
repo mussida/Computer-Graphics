@@ -1,5 +1,76 @@
 ("use strict");
 
+async function loadModel(gl, objHref) {
+  const response = await fetch(objHref);
+  const text = await response.text();
+  const obj = parseOBJ(text);
+
+  const baseHref = new URL(objHref, window.location.href);
+  const matTexts = await Promise.all(
+    obj.materialLibs.map(async (filename) => {
+      const matHref = new URL(filename, baseHref).href;
+      const response = await fetch(matHref);
+      return await response.text();
+    })
+  );
+  const materials = parseMTL(matTexts.join("\n"));
+  console.log("Materiali caricati:", materials);
+
+  const textures = {
+    defaultWhite: create1PixelTexture(gl, [255, 255, 255, 255]),
+  };
+
+  // Carichiamo le texture per i materiali
+  for (const material of Object.values(materials)) {
+    Object.entries(material)
+      .filter(([key]) => key.endsWith("Map"))
+      .forEach(([key, filename]) => {
+        if (!filename) return; // Evitiamo errori su materiali senza texture
+        let texture = textures[filename];
+
+        if (!texture) {
+          const textureHref = new URL(filename, baseHref).href;
+          console.log("Caricamento texture:", textureHref);
+          texture = createTexture(gl, textureHref);
+          textures[filename] = texture;
+        }
+
+        material[key] = texture;
+      });
+  }
+
+  const defaultMaterial = {
+    diffuse: [1, 1, 1],
+    diffuseMap: textures.defaultWhite,
+    ambient: [0.0, 0.0, 0.0],
+    specular: [1, 1, 1],
+    shininess: 400,
+    opacity: 1,
+    emissive: [0, 0, 0],
+  };
+
+  const parts = obj.geometries.map(({ material, data }) => {
+    if (data.color) {
+      if (data.position.length === data.color.length) {
+        data.color = { numComponents: 3, data: data.color };
+      }
+    } else {
+      data.color = { value: [1, 1, 1, 1] };
+    }
+
+    const bufferInfo = webglUtils.createBufferInfoFromArrays(gl, data);
+    return {
+      material: {
+        ...defaultMaterial,
+        ...materials[material],
+      },
+      bufferInfo,
+    };
+  });
+
+  return { obj, parts };
+}
+
 async function main() {
   // Prende il canvas e il contesto WebGL
   /** @type {HTMLCanvasElement} */
@@ -123,108 +194,52 @@ async function main() {
   // compila i programmi shader e li collega
   const meshProgramInfo = webglUtils.createProgramInfo(gl, [vs, fs]);
 
-  const objHref = "assets/textureprova/LowOkVersion.obj";
-  const response = await fetch(objHref);
-  const text = await response.text();
-  const obj = parseOBJ(text);
-  console.log(obj);
-  const baseHref = new URL(objHref, window.location.href);
-  const matTexts = await Promise.all(
-    obj.materialLibs.map(async (filename) => {
-      const matHref = new URL(filename, baseHref).href;
-      const response = await fetch(matHref);
-      return await response.text();
-    })
+  // Carichiamo i due modelli
+  const model1 = await loadModel(gl, "assets/textureprova/LowOkVersion.obj");
+  const model2 = await loadModel(
+    gl,
+    "assets/lantern/LanternCompleteVersion.obj"
   );
-  const materials = parseMTL(matTexts.join("\n"));
 
-  const textures = {
-    defaultWhite: create1PixelTexture(gl, [255, 255, 255, 255]),
-  };
+  // Creiamo una lista di modelli da renderizzare
+  const models = [model1, model2];
 
-  // carica le texture e le associa ai materiali
-  for (const material of Object.values(materials)) {
-    console.log(material);
-    Object.entries(material)
-      .filter(([key]) => key.endsWith("Map"))
-      .forEach(([key, filename]) => {
-        let texture = textures[filename];
-        if (!texture) {
-          const textureHref = new URL(filename, baseHref).href;
-          texture = createTexture(gl, textureHref);
-          textures[filename] = texture;
-        }
-        material[key] = texture;
-      });
-  }
+  // function getExtents(positions) {
+  //   const min = positions.slice(0, 3);
+  //   const max = positions.slice(0, 3);
+  //   for (let i = 3; i < positions.length; i += 3) {
+  //     for (let j = 0; j < 3; ++j) {
+  //       const v = positions[i + j];
+  //       min[j] = Math.min(v, min[j]);
+  //       max[j] = Math.max(v, max[j]);
+  //     }
+  //   }
+  //   return { min, max };
+  // }
 
-  const defaultMaterial = {
-    diffuse: [1, 1, 1],
-    diffuseMap: textures.defaultWhite,
-    ambient: [0.0, 0.0, 0.0],
-    specular: [1, 1, 1],
-    shininess: 400,
-    opacity: 1,
-    emissive: [0, 0, 0],
-  };
+  // function getGeometriesExtents(geometries) {
+  //   return geometries.reduce(
+  //     ({ min, max }, { data }) => {
+  //       const minMax = getExtents(data.position);
+  //       return {
+  //         min: min.map((min, ndx) => Math.min(minMax.min[ndx], min)),
+  //         max: max.map((max, ndx) => Math.max(minMax.max[ndx], max)),
+  //       };
+  //     },
+  //     {
+  //       min: Array(3).fill(Number.POSITIVE_INFINITY),
+  //       max: Array(3).fill(Number.NEGATIVE_INFINITY),
+  //     }
+  //   );
+  // }
 
-  const parts = obj.geometries.map(({ material, data }) => {
-    if (data.color) {
-      if (data.position.length === data.color.length) {
-        data.color = { numComponents: 3, data: data.color };
-      }
-    } else {
-      data.color = { value: [1, 1, 1, 1] };
-    }
-
-    // create a buffer for each array by calling
-    // gl.createBuffer, gl.bindBuffer, gl.bufferData
-    const bufferInfo = webglUtils.createBufferInfoFromArrays(gl, data);
-    return {
-      material: {
-        ...defaultMaterial,
-        ...materials[material],
-      },
-      bufferInfo,
-    };
-  });
-
-  function getExtents(positions) {
-    const min = positions.slice(0, 3);
-    const max = positions.slice(0, 3);
-    for (let i = 3; i < positions.length; i += 3) {
-      for (let j = 0; j < 3; ++j) {
-        const v = positions[i + j];
-        min[j] = Math.min(v, min[j]);
-        max[j] = Math.max(v, max[j]);
-      }
-    }
-    return { min, max };
-  }
-
-  function getGeometriesExtents(geometries) {
-    return geometries.reduce(
-      ({ min, max }, { data }) => {
-        const minMax = getExtents(data.position);
-        return {
-          min: min.map((min, ndx) => Math.min(minMax.min[ndx], min)),
-          max: max.map((max, ndx) => Math.max(minMax.max[ndx], max)),
-        };
-      },
-      {
-        min: Array(3).fill(Number.POSITIVE_INFINITY),
-        max: Array(3).fill(Number.NEGATIVE_INFINITY),
-      }
-    );
-  }
-
-  const extents = getGeometriesExtents(obj.geometries);
-  const range = m4.subtractVectors(extents.max, extents.min);
-  // amount to move the object so its center is at the origin
-  const objOffset = m4.scaleVector(
-    m4.addVectors(extents.min, m4.scaleVector(range, 0.5)),
-    -1
-  );
+  // const extents = getGeometriesExtents(obj.geometries);
+  // const range = m4.subtractVectors(extents.max, extents.min);
+  // // amount to move the object so its center is at the origin
+  // const objOffset = m4.scaleVector(
+  //   m4.addVectors(extents.min, m4.scaleVector(range, 0.5)),
+  //   -1
+  // );
 
   // Impostazioni della camera
   const cameraPosition = [0, 0, 20]; // Posizione della camera
@@ -297,98 +312,10 @@ async function main() {
     lightPosY = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
   });
 
-  // Funzione di aggiornamento della luce (esempio)
-  function updateLighting() {
-    // Qui puoi usare il nuovo valore di lightPosY per aggiornare la scena 3D
-    console.log("Updated lightPos in sharedUniforms:", lightPosY);
-
-    // Aggiorna gli uniformi nel WebGL
-    gl.useProgram(meshProgramInfo.program);
-    webglUtils.setUniforms(meshProgramInfo, {
-      u_view: view,
-      u_projection: projection,
-      u_viewWorldPosition: cameraPosition,
-      lightPos: [0.0, lightPosY, 20.0],
-      ambient: [0.0, 0.0, 0.0],
-      Ka: 1.0,
-      Kd: 1.0,
-      Ks: 1.0,
-      shininessAmbient: 100.0,
-    });
-  }
-
   // Funzione per convertire gradi in radianti
   function degToRad(deg) {
     return (deg * Math.PI) / 180;
   }
-
-  // Render function
-  function render() {
-    webglUtils.resizeCanvasToDisplaySize(gl.canvas);
-    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.enable(gl.DEPTH_TEST);
-
-    gl.clearColor(0, 0, 0, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const fieldOfViewRadians = degToRad(100);
-    const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-    const projection = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
-
-    const up = [0, 1, 0];
-    // Compute the camera's matrix using look at.
-    const camera = m4.lookAt(cameraPosition, cameraTarget, up);
-
-    // Make a view matrix from the camera matrix.
-    const view = m4.inverse(camera);
-
-    // Applica la rotazione al modello in base all'input dell'utente
-    const modelMatrix = m4.multiply(
-      m4.xRotation(rotation[0]),
-      m4.yRotation(rotation[1])
-    );
-
-    const worldMatrix = m4.multiply(modelMatrix, m4.scaling(0.5, 0.5, 0.5));
-    const worldInverseMatrix = m4.inverse(worldMatrix);
-    const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
-
-    const sharedUniforms = {
-      u_view: view,
-      u_projection: projection,
-      u_viewWorldPosition: cameraPosition,
-      lightPos: [0.0, lightPosY, 20.0], // Usa la variabile globale lightPosY
-      ambient: [0.0, 0.0, 0.0],
-      Ka: 1.0,
-      Kd: 1.0,
-      Ks: 1.0,
-      shininessAmbient: 100.0,
-    };
-
-    gl.useProgram(meshProgramInfo.program);
-
-    // calls gl.uniform
-    webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
-
-    // compute the world matrix once since all parts
-    // are at the same space.
-
-    webglUtils.setUniforms(meshProgramInfo, {
-      u_world: worldMatrix,
-      u_worldInverseTranspose: worldInverseTransposeMatrix,
-      diffuse: [1, 0.7, 0.5, 1],
-    });
-
-    for (const { bufferInfo, material } of parts) {
-      // calls gl.bindBuffer, gl.enableVertexAttribArray, gl.vertexAttribPointer
-      webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
-      // calls gl.uniform
-      webglUtils.setUniforms(meshProgramInfo, {}, material);
-      // calls gl.drawArrays or gl.drawElements
-      webglUtils.drawBufferInfo(gl, bufferInfo);
-    }
-    requestAnimationFrame(render);
-  }
-  requestAnimationFrame(render);
 
   // Imposta un limite per lo zoom
   const minZoom = 5; // Distanza minima della camera
@@ -442,6 +369,7 @@ async function main() {
     const sharedUniforms = {
       u_view: view,
       u_projection: projection,
+      u_viewWorldPosition: cameraPosition,
       lightPos: [0.0, lightPosY, 20.0],
       ambient: [0.0, 0.0, 0.0],
       Ka: 1.0,
@@ -464,14 +392,20 @@ async function main() {
       diffuse: [1, 0.7, 0.5, 1],
     });
 
-    for (const { bufferInfo, material } of parts) {
-      // calls gl.bindBuffer, gl.enableVertexAttribArray, gl.vertexAttribPointer
-      webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
-      // calls gl.uniform
-      webglUtils.setUniforms(meshProgramInfo, {}, material);
-      // calls gl.drawArrays or gl.drawElements
-      webglUtils.drawBufferInfo(gl, bufferInfo);
+    for (model of models) {
+      for (const { material, bufferInfo } of model.parts) {
+        webglUtils.setUniforms(meshProgramInfo, {
+          ...material,
+          mode: 1,
+          diffuseMap: material.diffuseMap,
+          specularMap: material.specularMap,
+        });
+
+        webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
+        webglUtils.drawBufferInfo(gl, bufferInfo);
+      }
     }
+
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);
