@@ -14,7 +14,6 @@ async function loadModel(gl, objHref) {
     })
   );
   const materials = parseMTL(matTexts.join("\n"));
-  console.log("Materiali caricati:", materials);
 
   const textures = {
     defaultWhite: create1PixelTexture(gl, [255, 255, 255, 255]),
@@ -30,7 +29,6 @@ async function loadModel(gl, objHref) {
 
         if (!texture) {
           const textureHref = new URL(filename, baseHref).href;
-          console.log("Caricamento texture:", textureHref);
           texture = createTexture(gl, textureHref);
           textures[filename] = texture;
         }
@@ -94,7 +92,7 @@ async function main() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.enable(gl.DEPTH_TEST); // Abilita il depth test per il 3D
 
-  console.log("WebGL inizializzato con successo!");
+  var dr = (5.0 * Math.PI) / 180.0;
 
   const vs = `
   attribute vec3 a_position;
@@ -135,6 +133,8 @@ async function main() {
   uniform vec3 lightPos;
   uniform vec3 u_ambientLight;
   uniform float shininessAmbient;
+
+  undiform vec3 lightPosLantern1;
   
   uniform vec3 diffuse;
   uniform vec3 ambient;
@@ -191,66 +191,110 @@ async function main() {
   }
 `;
 
+  const fsLantern = `
+  precision highp float;
+
+    varying vec3 v_normal;
+    varying vec3 v_surfaceToView;
+    varying vec3 vertPos;
+    varying vec2 v_texcoord;
+    varying vec4 v_color;
+
+    uniform vec3 lightPos;
+    uniform vec3 u_ambientLight;
+    uniform float shininessAmbient;
+    
+    uniform vec3 diffuse;
+    uniform vec3 ambient;
+    uniform vec3 emissive;
+    uniform vec3 specular;
+    uniform float shininess;
+    uniform float opacity;
+
+    uniform float Ka;
+    uniform float Kd;
+    uniform float Ks;
+
+    uniform int mode;
+
+    uniform sampler2D diffuseMap;
+    uniform sampler2D specularMap;
+
+    void main () {
+      vec3 N = normalize(v_normal);
+      vec3 L = normalize(lightPos - vertPos);
+      float lambertian = max(dot(N, L), 0.0);
+      float specularLight = 0.0;
+
+      if (lambertian > 0.0) {
+          vec3 R = reflect(-L, N);      // Reflected light vector
+          vec3 V = normalize(-vertPos); // Vector to viewer
+          float specAngle = max(dot(R, V), 0.0);
+          specularLight = pow(specAngle, shininessAmbient);
+      }
+
+      // Leggi la mappa di diffusione e combina con il colore dell'oggetto
+      vec4 diffuseMapColor = texture2D(diffuseMap, v_texcoord);
+      vec3 effectiveDiffuse = diffuse * diffuseMapColor.rgb * v_color.rgb;
+
+      // Leggi la mappa di specularità
+      vec4 specularMapColor = texture2D(specularMap, v_texcoord);
+      vec3 effectiveSpecular = specularMapColor.rgb * specularLight * specular;
+
+      vec2 st = gl_FragCoord.xy / vec2(1000.0, 1000.0);
+
+      vec2 center = vec2(0.5, 0.5);
+
+      // Euclidean distance from center
+      float dist = distance(st, center);
+
+      // Create a soft circular glow, gradual falloff from center 0.0 to 0.5
+      float glow = 1.0 - smoothstep(0.0, 0.5, dist);
+
+      vec3 color = vec3(1,1,1) * glow;
+
+      // Add a brighter core, gradual falloff from center 0.1 to 0.0
+      color += vec3(1.0, 0.8, 0.8) * smoothstep(0.1, 0.0, dist);
+
+      // gl_FragColor = vec4(color, 1.0);
+
+      // Calcola il colore finale
+      gl_FragColor = vec4(
+        Ka * ambient + 
+        Kd * lambertian * effectiveDiffuse + 
+        Ks * effectiveSpecular + emissive, 
+        diffuseMapColor.a * v_color.a * opacity 
+      );
+  }
+  `;
+
   // compila i programmi shader e li collega
   const meshProgramInfo = webglUtils.createProgramInfo(gl, [vs, fs]);
+  const meshProgramInfoLantern = webglUtils.createProgramInfo(gl, [
+    vs,
+    fsLantern,
+  ]);
 
   // Carichiamo i due modelli
-  const model1 = await loadModel(gl, "assets/textureprova/LowOkVersion.obj");
-  const model2 = await loadModel(
-    gl,
-    "assets/lantern/LanternCompleteVersion.obj"
-  );
+  const model1 = await loadModel(gl, "assets/Aculei_Forest/Aculei_Forest.obj");
+  const model2 = await loadModel(gl, "assets/Lantern/Lantern.obj");
 
   // Creiamo una lista di modelli da renderizzare
-  const models = [model1, model2];
+  // const models = [model1, model2];
 
-  // function getExtents(positions) {
-  //   const min = positions.slice(0, 3);
-  //   const max = positions.slice(0, 3);
-  //   for (let i = 3; i < positions.length; i += 3) {
-  //     for (let j = 0; j < 3; ++j) {
-  //       const v = positions[i + j];
-  //       min[j] = Math.min(v, min[j]);
-  //       max[j] = Math.max(v, max[j]);
-  //     }
-  //   }
-  //   return { min, max };
-  // }
-
-  // function getGeometriesExtents(geometries) {
-  //   return geometries.reduce(
-  //     ({ min, max }, { data }) => {
-  //       const minMax = getExtents(data.position);
-  //       return {
-  //         min: min.map((min, ndx) => Math.min(minMax.min[ndx], min)),
-  //         max: max.map((max, ndx) => Math.max(minMax.max[ndx], max)),
-  //       };
-  //     },
-  //     {
-  //       min: Array(3).fill(Number.POSITIVE_INFINITY),
-  //       max: Array(3).fill(Number.NEGATIVE_INFINITY),
-  //     }
-  //   );
-  // }
-
-  // const extents = getGeometriesExtents(obj.geometries);
-  // const range = m4.subtractVectors(extents.max, extents.min);
-  // // amount to move the object so its center is at the origin
-  // const objOffset = m4.scaleVector(
-  //   m4.addVectors(extents.min, m4.scaleVector(range, 0.5)),
-  //   -1
-  // );
+  const complexModel = [
+    { model: model1, programInfo: meshProgramInfo },
+    { model: model2, programInfo: meshProgramInfoLantern },
+  ];
 
   // Impostazioni della camera
-  const cameraPosition = [0, 0, 20]; // Posizione della camera
-  const cameraTarget = [0, 0, 0]; // Punto verso cui la camera è rivolta
-  const zNear = 0.1;
-  const zFar = 50;
+  var cameraPosition = [0, 0, 20];
+  var cameraTarget = [0, 1, 0];
+
   // Variabili per gestire l'input dell'utente
   let mouseDown = false;
   let lastMouseX = 0;
   let lastMouseY = 0;
-  let rotation = [0, 0]; // Angoli di rotazione del modello
 
   // Event listeners per gestire l'input dell'utente
   canvas.addEventListener("mousedown", (e) => {
@@ -265,9 +309,18 @@ async function main() {
       const dy = e.clientY - lastMouseY;
 
       // Aggiorna gli angoli di rotazione del modello
-      rotation[0] += dy * 0.01; // Ruota lungo l'asse X
-      rotation[1] += dx * 0.01; // Ruota lungo l'asse Y
-
+      if (phi + dy * 0.01 <= Math.PI / 2 - 0.1 && phi + dy * 0.01 > 0) {
+        phi += dy * 0.01;
+        phiTag.value = phi;
+      }
+      if (
+        // theta - dx * 0.01 <= Math.PI / 2 &&
+        // theta - dx * 0.01 > 0
+        true
+      ) {
+        theta -= dx * 0.01;
+        thetaTag.value = theta;
+      }
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
     }
@@ -280,36 +333,107 @@ async function main() {
   // Event listener per la tastiera
   document.addEventListener("keydown", (e) => {
     const rotationSpeed = 0.05; // Velocità di rotazione per ogni tasto premuto
-
     switch (e.key) {
       case "ArrowUp": // Rotazione verso l'alto
-        rotation[0] -= rotationSpeed;
+        // aumenta phi
+        if (phi + rotationSpeed <= Math.PI / 2 - 0.1) {
+          phi += rotationSpeed;
+          phiTag.value = phi;
+        }
         break;
-      case "ArrowDown": // Rotazione verso il basso
-        rotation[0] += rotationSpeed;
+      case "ArrowDown":
+        if (phi - rotationSpeed > 0) {
+          phi -= rotationSpeed;
+          phiTag.value = phi;
+        }
         break;
       case "ArrowLeft": // Rotazione verso sinistra
-        rotation[1] -= rotationSpeed;
+        // rotation[1] -= rotationSpeed;
+        if (true) {
+          // if (theta - rotationSpeed > 0) {
+          theta -= rotationSpeed;
+          thetaTag.value = theta;
+        }
         break;
       case "ArrowRight": // Rotazione verso destra
-        rotation[1] += rotationSpeed;
+        // if (theta + rotationSpeed <= Math.PI / 2) {
+        if (true) {
+          theta += rotationSpeed;
+          thetaTag.value = theta;
+        }
         break;
     }
-
     // Impedisci lo scrolling della pagina con le frecce
     e.preventDefault();
   });
 
+  document.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      const zoomSpeed = 0.2;
+      if (
+        distance - e.deltaY * zoomSpeed > 7 &&
+        distance - e.deltaY * zoomSpeed < 40
+      ) {
+        distance -= e.deltaY * zoomSpeed;
+        distanceTag.value = distance;
+      }
+    },
+    { passive: false }
+  );
+
   // Variabile globale per la posizione Y della luce
-  let lightPosY = 20.0; // Valore iniziale
+  let lightPosY = 3.5; // Valore iniziale
+  let lightPosX = 5.5; // Valore iniziale
+  let lightPosZ = -14.6; // Valore iniziale
+  let distance = 24; // Distanza iniziale della camera
+  let theta = 3.14;
+  let phi = 0.274532925199433;
+  let near = 1;
+  let far = 100;
+  let fovy = 5;
 
   // Trova l'elemento input range per la posizione della luce
-  const lightPosRange = document.getElementById("lightPosRange");
-
-  // Aggiungi un event listener per l'input range
-  lightPosRange.addEventListener("input", (event) => {
-    console.log("shininess", parseFloat(event.target.value));
+  const lightPosYTag = document.getElementById("lightPosY");
+  lightPosYTag.addEventListener("input", (event) => {
     lightPosY = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  const lightPosXTag = document.getElementById("lightPosX");
+  lightPosXTag.addEventListener("input", (event) => {
+    lightPosX = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  const lightPosZTag = document.getElementById("lightPosZ");
+  lightPosZTag.addEventListener("input", (event) => {
+    lightPosZ = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  const distanceTag = document.getElementById("distance");
+  distanceTag.addEventListener("input", (event) => {
+    distance = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  const thetaTag = document.getElementById("theta");
+  thetaTag.step = dr;
+  thetaTag.value = 3.14;
+  thetaTag.addEventListener("input", (event) => {
+    theta = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  phiTag = document.getElementById("phi");
+  phiTag.step = dr;
+  phiTag.value = 0.274532925199433;
+  phiTag.addEventListener("input", (event) => {
+    phi = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  nearTag = document.getElementById("near");
+  nearTag.addEventListener("input", (event) => {
+    near = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  farTag = document.getElementById("far");
+  farTag.addEventListener("input", (event) => {
+    far = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
+  });
+  fovyTag = document.getElementById("fovy");
+  fovyTag.addEventListener("input", (event) => {
+    fovy = parseFloat(event.target.value); // Aggiorna la posizione Y della luce
   });
 
   // Funzione per convertire gradi in radianti
@@ -321,20 +445,23 @@ async function main() {
   const minZoom = 5; // Distanza minima della camera
   const maxZoom = 50; // Distanza massima della camera
 
-  canvas.addEventListener("wheel", (e) => {
-    e.preventDefault(); // Evita lo scroll della pagina
+  // canvas.addEventListener("wheel", (e) => {
+  //   e.preventDefault(); // Evita lo scroll della pagina
 
-    const zoomSpeed = 1; // Sensibilità dello zoom
-    cameraPosition[2] += e.deltaY * 0.05 * zoomSpeed; // Modifica la posizione Z della camera
+  //   const zoomSpeed = 1; // Sensibilità dello zoom
+  //   cameraPosition[2] += e.deltaY * 0.05 * zoomSpeed; // Modifica la posizione Z della camera
 
-    // Limita lo zoom per evitare di passare attraverso l'oggetto o allontanarsi troppo
-    cameraPosition[2] = Math.max(minZoom, Math.min(maxZoom, cameraPosition[2]));
-  });
+  //   // Limita lo zoom per evitare di passare attraverso l'oggetto o allontanarsi troppo
+  //   cameraPosition[2] = Math.max(minZoom, Math.min(maxZoom, cameraPosition[2]));
+  // });
 
   // Funzione per convertire gradi in radianti
   function degToRad(deg) {
     return (deg * Math.PI) / 180;
   }
+  // console.log(complexModel[0]);
+
+  console.log("iowdn", complexModel[1]);
 
   // Render function
   function render() {
@@ -347,22 +474,19 @@ async function main() {
 
     const fieldOfViewRadians = degToRad(100);
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-    const projection = m4.perspective(fieldOfViewRadians, aspect, zNear, zFar);
+    const projection = m4.perspective(fieldOfViewRadians, aspect, near, far);
+
+    cameraPosition = [
+      distance * Math.cos(phi) * Math.sin(theta),
+      distance * Math.sin(phi),
+      distance * Math.cos(phi) * Math.cos(theta),
+    ];
 
     const up = [0, 1, 0];
-    // Compute the camera's matrix using look at.
     const camera = m4.lookAt(cameraPosition, cameraTarget, up);
+    view = m4.inverse(camera);
 
-    // Make a view matrix from the camera matrix.
-    const view = m4.inverse(camera);
-
-    // Applica la rotazione al modello in base all'input dell'utente
-    const modelMatrix = m4.multiply(
-      m4.xRotation(rotation[0]),
-      m4.yRotation(rotation[1])
-    );
-
-    const worldMatrix = m4.multiply(modelMatrix, m4.scaling(0.5, 0.5, 0.5));
+    var worldMatrix = m4.identity();
     const worldInverseMatrix = m4.inverse(worldMatrix);
     const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
 
@@ -370,38 +494,63 @@ async function main() {
       u_view: view,
       u_projection: projection,
       u_viewWorldPosition: cameraPosition,
-      lightPos: [0.0, lightPosY, 20.0],
+      lightPos: [lightPosX, lightPosY, lightPosZ],
       ambient: [0.0, 0.0, 0.0],
       Ka: 1.0,
       Kd: 1.0,
       Ks: 1.0,
       shininessAmbient: 100.0,
+      near: near,
     };
 
-    gl.useProgram(meshProgramInfo.program);
+    // gl.useProgram(meshProgramInfo.program);
+    // gl.useProgram(meshProgramInfoLantern.program);
 
     // calls gl.uniform
-    webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
+    // webglUtils.setUniforms(meshProgramInfo, sharedUniforms);
+    // webglUtils.setUniforms(meshProgramInfoLantern, sharedUniforms);
 
     // compute the world matrix once since all parts
     // are at the same space.
 
-    webglUtils.setUniforms(meshProgramInfo, {
-      u_world: worldMatrix,
-      u_worldInverseTranspose: worldInverseTransposeMatrix,
-      diffuse: [1, 0.7, 0.5, 1],
-    });
+    // webglUtils.setUniforms(meshProgramInfo, {
+    //   u_world: worldMatrix,
+    //   u_worldInverseTranspose: worldInverseTransposeMatrix,
+    //   diffuse: [1, 0.7, 0.5, 1],
+    // });
 
-    for (model of models) {
-      for (const { material, bufferInfo } of model.parts) {
-        webglUtils.setUniforms(meshProgramInfo, {
+    // for (model of models) {
+    //   for (const { material, bufferInfo } of model.parts) {
+    //     webglUtils.setUniforms(meshProgramInfo, {
+    //       ...material,
+    //       mode: 1,
+    //       diffuseMap: material.diffuseMap,
+    //       specularMap: material.specularMap,
+    //     });
+
+    //     webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
+
+    //     webglUtils.drawBufferInfo(gl, bufferInfo);
+    //   }
+    // }
+    for (model of complexModel) {
+      gl.useProgram(model.programInfo.program);
+      webglUtils.setUniforms(model.programInfo, sharedUniforms);
+      webglUtils.setUniforms(model.programInfo, {
+        u_world: worldMatrix,
+        u_worldInverseTranspose: worldInverseTransposeMatrix,
+        diffuse: [1, 0.7, 0.5, 1],
+      });
+      for (const { material, bufferInfo } of model.model.parts) {
+        webglUtils.setUniforms(model.programInfo, {
           ...material,
           mode: 1,
           diffuseMap: material.diffuseMap,
           specularMap: material.specularMap,
         });
 
-        webglUtils.setBuffersAndAttributes(gl, meshProgramInfo, bufferInfo);
+        webglUtils.setBuffersAndAttributes(gl, model.programInfo, bufferInfo);
+
         webglUtils.drawBufferInfo(gl, bufferInfo);
       }
     }

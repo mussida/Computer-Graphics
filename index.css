@@ -7,3 +7,20 @@ canvas {
   height: 100vh;
   display: block;
 }
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+@layer base {
+  input::placeholder,
+  textarea::placeholder {
+    color: theme(--color-gray-400);
+  }
+}

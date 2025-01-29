@@ -1,6 +1,6 @@
 const routes = {
-  "/": "home.html",
-  "/me": "me.html",
+  "/": "pages/home.html",
+  "/info": "pages/info.html",
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.onpopstate = loadContent;
-  loadContent(); // Carica il contenuto iniziale
+  loadContent();
 });
 
 function navigateTo(url) {
