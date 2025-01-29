@@ -1,6 +1,6 @@
 const routes = {
   "/": "pages/home.html",
-  "/info": "pages/info.html",
+  "/about": "pages/about.html",
 };
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -134,8 +134,6 @@ async function main() {
   uniform vec3 u_ambientLight;
   uniform float shininessAmbient;
 
-  undiform vec3 lightPosLantern1;
-  
   uniform vec3 diffuse;
   uniform vec3 ambient;
   uniform vec3 emissive;
@@ -296,14 +294,95 @@ async function main() {
   let lastMouseX = 0;
   let lastMouseY = 0;
 
-  // Event listeners per gestire l'input dell'utente
-  canvas.addEventListener("mousedown", (e) => {
+  // // Event listeners per gestire l'input dell'utente
+  // canvas.addEventListener("mousedown", (e) => {
+  //   mouseDown = true;
+  //   lastMouseX = e.clientX;
+  //   lastMouseY = e.clientY;
+  // });
+
+  // canvas.addEventListener("mousemove", (e) => {
+  // if (mouseDown) {
+  //   const dx = e.clientX - lastMouseX;
+  //   const dy = e.clientY - lastMouseY;
+
+  //   // Aggiorna gli angoli di rotazione del modello
+  //   if (phi + dy * 0.01 <= Math.PI / 2 - 0.1 && phi + dy * 0.01 > 0) {
+  //     phi += dy * 0.01;
+  //     phiTag.value = phi;
+  //   }
+  //   if (
+  //     // theta - dx * 0.01 <= Math.PI / 2 &&
+  //     // theta - dx * 0.01 > 0
+  //     true
+  //   ) {
+  //     theta -= dx * 0.01;
+  //     thetaTag.value = theta;
+  //   }
+  //   lastMouseX = e.clientX;
+  //   lastMouseY = e.clientY;
+  // }
+  // });
+
+  // canvas.addEventListener("mouseup", () => {
+  //   mouseDown = false;
+  // });
+  // Variabili per gestire l'input dell'utente
+  let isTouching = false;
+  let lastTouchX = 0;
+  let lastTouchY = 0;
+
+  canvas.addEventListener("touchstart", (e) => {
+    isTouching = true;
+    lastTouchX = e.pageX;
+    lastTouchY = e.pageY;
+  });
+
+  // Event listener per il tocco iniziale
+  canvas.ontouchstart = (e) => {
+    console.log("touchstart");
+    isTouching = true;
+    lastTouchX = e.pageX;
+    lastTouchY = e.pageY;
+    e.preventDefault();
+    return false;
+  };
+
+  // Event listener per il movimento del tocco
+  canvas.ontouchmove = (e) => {
+    console.log("touchmove");
+    if (isTouching) {
+      tmpTheta = theta + (e.pageX - lastTouchX) * 0.01;
+      tmpPhi = phi + (e.pageY - lastTouchY) * 0.01;
+      if (tmpTheta <= Math.PI / 2 && tmpTheta > 0) {
+        theta = tmpTheta;
+        thetaTag.value = theta;
+        lastTouchY = e.pageY;
+      }
+      if (tmpPhi <= Math.PI / 2 - 0.1 && tmpPhi > 0) {
+        phi = tmpPhi;
+        phiTag.value = phi;
+        lastTouchY = e.pageY;
+      }
+    }
+  };
+
+  // Event listener per il termine del tocco
+  canvas.canvas.ontouchend = () => {
+    isTouching = false;
+  };
+
+  canvas.touchcancel = () => {
+    isTouching = false;
+  };
+
+  canvas.onmousedown = (e) => {
     mouseDown = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
-  });
+  };
 
-  canvas.addEventListener("mousemove", (e) => {
+  canvas.onmousemove = (e) => {
     if (mouseDown) {
       const dx = e.clientX - lastMouseX;
       const dy = e.clientY - lastMouseY;
@@ -324,11 +403,11 @@ async function main() {
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
     }
-  });
+  };
 
-  canvas.addEventListener("mouseup", () => {
+  canvas.onmouseup = () => {
     mouseDown = false;
-  });
+  };
 
   // Event listener per la tastiera
   document.addEventListener("keydown", (e) => {
@@ -355,7 +434,7 @@ async function main() {
           thetaTag.value = theta;
         }
         break;
-      case "ArrowRight": // Rotazione verso destra
+      case "ArrowRight":
         // if (theta + rotationSpeed <= Math.PI / 2) {
         if (true) {
           theta += rotationSpeed;
@@ -363,7 +442,6 @@ async function main() {
         }
         break;
     }
-    // Impedisci lo scrolling della pagina con le frecce
     e.preventDefault();
   });
 
@@ -382,6 +460,10 @@ async function main() {
     },
     { passive: false }
   );
+
+  canvas.ontouchstart = (e) => {
+    e.preventDefault();
+  };
 
   // Variabile globale per la posizione Y della luce
   let lightPosY = 3.5; // Valore iniziale
@@ -460,8 +542,6 @@ async function main() {
     return (deg * Math.PI) / 180;
   }
   // console.log(complexModel[0]);
-
-  console.log("iowdn", complexModel[1]);
 
   // Render function
   function render() {

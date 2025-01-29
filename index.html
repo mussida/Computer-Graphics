@@ -17,15 +17,23 @@
     <link rel="stylesheet" href="index.css" />
     <title>Document</title>
   </head>
-  <body>
+  <body class="bg-black">
     <nav
-      class="flex justify-between p-4 z-50 font-mono text-green-700 bg-black"
+      class="flex justify-between p-4 z-50 font-mono text-green-700 bg-black absolute w-full"
     >
-      <a class="hover:text-green-600" href="/" data-link>Aculei_Forest</a>
+      <div class="flex items-center gap-6">
+        <a class="hover:text-green-600" href="/" data-link>Aculei_Forest</a>
+        <a class="hover:text-green-600 text-xs" href="/about" data-link>About</a>
+        <a class="hover:text-green-600 text-xs" href="/" data-link>Doc</a>
+         <a href="https://github.com/mussida/Computer-Graphics" class="hover:text-green-600 text-xs">
+          Github
+        </a>       
+      </div>
+      
     </div>
-      <div class="text-xs flex flex-col gap-2 items-end">
-        <div>awniyoussef3@gmail.com</div>
-        <div>Mat: 920147911</div>
+      <div class="text-xs flex flex-col gap-1 items-end sm:block hidden">
+        <a href="">awniyoussef3@gmail.com</a>
+        <a href="">Mat: 12349531</a>  
       </div>
     </nav>
     <div id="content"></div>
