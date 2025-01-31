@@ -1,74 +1,5 @@
 ("use strict");
 
-async function loadModel(gl, objHref) {
-  const response = await fetch(objHref);
-  const text = await response.text();
-  const obj = parseOBJ(text);
-
-  const baseHref = new URL(objHref, window.location.href);
-  const matTexts = await Promise.all(
-    obj.materialLibs.map(async (filename) => {
-      const matHref = new URL(filename, baseHref).href;
-      const response = await fetch(matHref);
-      return await response.text();
-    })
-  );
-  const materials = parseMTL(matTexts.join("\n"));
-
-  const textures = {
-    defaultWhite: create1PixelTexture(gl, [255, 255, 255, 255]),
-  };
-
-  // Carichiamo le texture per i materiali
-  for (const material of Object.values(materials)) {
-    Object.entries(material)
-      .filter(([key]) => key.endsWith("Map"))
-      .forEach(([key, filename]) => {
-        if (!filename) return; // Evitiamo errori su materiali senza texture
-        let texture = textures[filename];
-
-        if (!texture) {
-          const textureHref = new URL(filename, baseHref).href;
-          texture = createTexture(gl, textureHref);
-          textures[filename] = texture;
-        }
-
-        material[key] = texture;
-      });
-  }
-
-  const defaultMaterial = {
-    diffuse: [1, 1, 1],
-    diffuseMap: textures.defaultWhite,
-    ambient: [0.0, 0.0, 0.0],
-    specular: [1, 1, 1],
-    shininess: 400,
-    opacity: 1,
-    emissive: [0, 0, 0],
-  };
-
-  const parts = obj.geometries.map(({ material, data }) => {
-    if (data.color) {
-      if (data.position.length === data.color.length) {
-        data.color = { numComponents: 3, data: data.color };
-      }
-    } else {
-      data.color = { value: [1, 1, 1, 1] };
-    }
-
-    const bufferInfo = webglUtils.createBufferInfoFromArrays(gl, data);
-    return {
-      material: {
-        ...defaultMaterial,
-        ...materials[material],
-      },
-      bufferInfo,
-    };
-  });
-
-  return { obj, parts };
-}
-
 async function main() {
   // Prende il canvas e il contesto WebGL
   /** @type {HTMLCanvasElement} */
@@ -294,95 +225,23 @@ async function main() {
   let lastMouseX = 0;
   let lastMouseY = 0;
 
-  // // Event listeners per gestire l'input dell'utente
-  // canvas.addEventListener("mousedown", (e) => {
-  //   mouseDown = true;
-  //   lastMouseX = e.clientX;
-  //   lastMouseY = e.clientY;
-  // });
-
-  // canvas.addEventListener("mousemove", (e) => {
-  // if (mouseDown) {
-  //   const dx = e.clientX - lastMouseX;
-  //   const dy = e.clientY - lastMouseY;
-
-  //   // Aggiorna gli angoli di rotazione del modello
-  //   if (phi + dy * 0.01 <= Math.PI / 2 - 0.1 && phi + dy * 0.01 > 0) {
-  //     phi += dy * 0.01;
-  //     phiTag.value = phi;
-  //   }
-  //   if (
-  //     // theta - dx * 0.01 <= Math.PI / 2 &&
-  //     // theta - dx * 0.01 > 0
-  //     true
-  //   ) {
-  //     theta -= dx * 0.01;
-  //     thetaTag.value = theta;
-  //   }
-  //   lastMouseX = e.clientX;
-  //   lastMouseY = e.clientY;
-  // }
-  // });
-
-  // canvas.addEventListener("mouseup", () => {
-  //   mouseDown = false;
-  // });
-  // Variabili per gestire l'input dell'utente
-  let isTouching = false;
-  let lastTouchX = 0;
-  let lastTouchY = 0;
-
-  canvas.addEventListener("touchstart", (e) => {
-    isTouching = true;
-    lastTouchX = e.pageX;
-    lastTouchY = e.pageY;
-  });
-
-  // Event listener per il tocco iniziale
-  canvas.ontouchstart = (e) => {
-    console.log("touchstart");
-    isTouching = true;
-    lastTouchX = e.pageX;
-    lastTouchY = e.pageY;
+  canvas.addEventListener("mousedown", (e) => {
     e.preventDefault();
-    return false;
-  };
-
-  // Event listener per il movimento del tocco
-  canvas.ontouchmove = (e) => {
-    console.log("touchmove");
-    if (isTouching) {
-      tmpTheta = theta + (e.pageX - lastTouchX) * 0.01;
-      tmpPhi = phi + (e.pageY - lastTouchY) * 0.01;
-      if (tmpTheta <= Math.PI / 2 && tmpTheta > 0) {
-        theta = tmpTheta;
-        thetaTag.value = theta;
-        lastTouchY = e.pageY;
-      }
-      if (tmpPhi <= Math.PI / 2 - 0.1 && tmpPhi > 0) {
-        phi = tmpPhi;
-        phiTag.value = phi;
-        lastTouchY = e.pageY;
-      }
-    }
-  };
-
-  // Event listener per il termine del tocco
-  canvas.canvas.ontouchend = () => {
-    isTouching = false;
-  };
-
-  canvas.touchcancel = () => {
-    isTouching = false;
-  };
-
-  canvas.onmousedown = (e) => {
     mouseDown = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
-  };
+  });
 
-  canvas.onmousemove = (e) => {
+  canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    mouseDown = true;
+    lastMouseX = e.touches[0].clientX;
+    lastMouseY = e.touches[0].clientY;
+    console.log("touchstart");
+    console.log(e.touches[0].clientX);
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
     if (mouseDown) {
       const dx = e.clientX - lastMouseX;
       const dy = e.clientY - lastMouseY;
@@ -403,11 +262,41 @@ async function main() {
       lastMouseX = e.clientX;
       lastMouseY = e.clientY;
     }
-  };
+  });
 
-  canvas.onmouseup = () => {
+  canvas.addEventListener("touchmove", (e) => {
+    if (mouseDown) {
+      const dx = e.touches[0].clientX - lastMouseX;
+      const dy = e.touches[0].clientY - lastMouseY;
+
+      // Aggiorna gli angoli di rotazione del modello
+      if (phi + dy * 0.01 <= Math.PI / 2 - 0.1 && phi + dy * 0.01 > 0) {
+        // if (true) {
+        phi += dy * 0.01;
+        phiTag.value = phi;
+        console.log("phi:", phi);
+      }
+      if (
+        // theta - dx * 0.01 <= Math.PI / 2 &&
+        // theta - dx * 0.01 > 0
+        true
+      ) {
+        theta -= dx * 0.01;
+        console.log("theta:", theta);
+        thetaTag.value = theta;
+      }
+      lastMouseX = e.touches[0].clientX;
+      lastMouseY = e.touches[0].clientY;
+    }
+  });
+
+  canvas.addEventListener("mouseup", () => {
     mouseDown = false;
-  };
+  });
+
+  canvas.addEventListener("touchend", () => {
+    mouseDown = false;
+  });
 
   // Event listener per la tastiera
   document.addEventListener("keydown", (e) => {
@@ -461,9 +350,9 @@ async function main() {
     { passive: false }
   );
 
-  canvas.ontouchstart = (e) => {
-    e.preventDefault();
-  };
+  // canvas.ontouchstart = (e) => {
+  //   e.preventDefault();
+  // };
 
   // Variabile globale per la posizione Y della luce
   let lightPosY = 3.5; // Valore iniziale
