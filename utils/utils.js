@@ -1,17 +1,9 @@
-// Funzione per ridimensionare correttamente il canvas
-// function resizeCanvasToDisplaySize(canvas, gl) {
-//   console.log("resizeCanvasToDisplaySize");
-//   const width = canvas.clientWidth;
-//   const height = canvas.clientHeight;
+function degToRad(deg) {
+  return (deg * Math.PI) / 180;
+}
 
-//   if (canvas.width !== width || canvas.height !== height) {
-//     canvas.width = width;
-//     canvas.height = height;
-//     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-//   }
-// }
-
-  // Funzione per convertire gradi in radianti
-  function degToRad(deg) {
-    return (deg * Math.PI) / 180;
-  }
+function getDistance(touch1, touch2) {
+  let dx = touch1.clientX - touch2.clientX;
+  let dy = touch1.clientY - touch2.clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
