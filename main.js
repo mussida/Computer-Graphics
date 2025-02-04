@@ -3,6 +3,8 @@
 async function main() {
   /** @type {HTMLCanvasElement} */
   const canvas = document.querySelector("#canvas");
+  const loader = document.querySelector("#loader"); // Seleziona il loader
+
   if (!canvas) {
     console.warn("Canvas non trovato, WebGL non inizializzato.");
     return;
@@ -434,6 +436,8 @@ async function main() {
   // Caricamento due modelli
   const forest = await loadModel(gl, "assets/Aculei_Forest/Aculei_Forest.obj");
   const lanterns = await loadModel(gl, "assets/Lantern/Lantern.obj");
+
+  loader.style.display = "none";
 
   const complexModel = [
     { model: forest, programInfo: meshProgramInfo },
