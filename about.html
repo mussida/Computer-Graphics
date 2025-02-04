@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script
+      src="https://webglfundamentals.org/webgl/resources/webgl-utils.js"
+      defer
+    ></script>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <script src="graphics_function/graphics_function.js" defer></script>
+    <script type="text/javascript" src="libraries/m4.js" defer></script>
+    <script type="text/javascript" src="libraries/dat.gui.js" defer></script>
+    <script src="utils/utils.js"></script>
+    <script src="utils/parsers.js"></script>
+    <script src="utils/textures.js"></script>
+    <script src="utils/loader.js"></script>
+    <link rel="stylesheet" href="about.css" />
+    <title>Document</title>
+  </head>
+  <body></body>
+    <div
+      class="bg-black w-screen h-screen flex flex-col sm:flex-row justify-evenly items-center"
+    >
+    <nav
+      class="flex justify-between p-4 z-50 font-mono text-green-700 absolute top-0 w-full"
+    >
+      <div class="flex items-center gap-6">
+        <a class="hover:text-green-600" href="/" data-link>Aculei_Forest</a>
+        <a class="hover:text-green-600 text-xs" href="/about.html" data-link>About</a>
+        <a class="hover:text-green-600 text-xs" 
+          href="https://aculei-forest-doc.onrender.com" 
+          target="_blank" 
+          rel="noopener noreferrer">
+          Doc
+        </a>
+        <a href="https://github.com/mussida/Computer-Graphics" class="hover:text-green-600 text-xs">
+          Github
+        </a>       
+      </div>
+      <div class="text-xs flex-col gap-1 items-end sm:flex hidden">
+        <a href="mailto:youssefawni.hanna@studio.unibo.it">youssefawni.hanna@studio.unibo.it</a>
+        <a href="">Mat: 0001132285</a>  
+      </div>
+    </nav>
+    <div
+        id="sidebar"
+        class="absolute top-20 left-0 ml-8 transform -translate-x-full transition-transform duration-300 ease-in-out max-h-[calc(100vh_-_8rem)] mt-16 mb-16 flex items-center overflow-x-scroll"
+    >
+    <div
+        class="overflow-y-auto flex flex-col items-start gap-3 w-80 p-8 bg-green-800/30 backdrop-blur-sm z-10 text-sm/6 font-medium text-green-700 border border-green-500 rounded"
+    >
+        <div class="flex justify-between items-center w-full">
+        <label for="lightPosY">Light Position Y:</label>
+        <input
+            type="range"
+            id="lightPosY"
+            min="-20"
+            max="50"
+            value="3.5"
+            step="0.1"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="lightPosX">Light Position X:</label>
+        <input
+            type="range"
+            id="lightPosX"
+            min="-20"
+            max="20"
+            value="5.5"
+            step="0.1"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="lightPosZ">Light Position Z:</label>
+        <input
+            type="range"
+            id="lightPosZ"
+            min="-20"
+            max="20"
+            value="-14.6"
+            step="0.1"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="distance">Distance:</label>
+        <input
+            type="range"
+            id="distance"
+            min="4"
+            max="40"
+            value="5"
+            step="1"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="theta">Theta:</label>
+        <input
+            type="range"
+            id="theta"
+            min="0"
+            max="3.14"
+            step="1"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="phi">Phi:</label>
+        <input
+            type="range"
+            id="phi"
+            min="0.1"
+            max="1.47"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="near">Near:</label>
+        <input
+            type="range"
+            id="near"
+            min="1"
+            max="10"
+            value="1"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="far">Far:</label>
+        <input
+            type="range"
+            id="far"
+            min="1"
+            max="100"
+            value="100"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+        <div class="flex justify-between items-center w-full">
+        <label for="fovy">Fovy:</label>
+        <input
+            type="range"
+            id="fovy"
+            min="10"
+            max="120"
+            value="5"
+            class="ml-2 accent-green-500"
+        />
+        </div>
+    </div>
+    <button
+        class="bg-green-800/30 text-green-500 border-r border-y border-green-500 rounded-tr rounded-br p-1 cursor-pointer hover:bg-green-800/40 hover:text-green-600"
+        onclick="toggleSidebar()"
+    >
+        <svg
+        id="arrow-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="1.5"
+        stroke="currentColor"
+        class="size-3"
+        >
+        <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="m8.25 4.5 7.5 7.5-7.5 7.5"
+        />
+        </svg>
+    </button>
+    </div>
+    <canvas id="canvas" class="mt-8"></canvas>
+    <div class="text-green-700 font-mono text-xs flex flex-col gap-2">
+        <div class="flex gap-2">
+            <div>Youssef Hanna</div>
+            <div>24y (When I wrote this)</div>
+        </div>
+        <div>Mat: 0001132285</div>
+        <div>youssefawni.hanna@studio.unibo.it</div>
+        <div>
+        <a href="" class="underline hover:text-green-600 cursor-pointer">
+            Computer Computer-Graphics 2023/24</div>
+        </a>
+    </div>
+    <script src="about.js" defer></script>
+    </div>
+  </body>
+</html>

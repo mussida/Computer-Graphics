@@ -8,7 +8,7 @@
       defer
     ></script>
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-    <script src="graphics_function/graphics_function.js"></script>
+    <script src="graphics_function/graphics_function.js" defer></script>
     <script type="text/javascript" src="libraries/m4.js" defer></script>
     <script type="text/javascript" src="libraries/dat.gui.js" defer></script>
     <script src="utils/utils.js"></script>
@@ -20,26 +20,237 @@
   </head>
   <body class="bg-black">
     <nav
-      class="flex justify-between p-4 z-50 font-mono text-green-700 bg-black absolute w-full"
+      class="flex justify-between p-4 z-50 font-mono text-green-700 absolute top-0 w-full"
     >
       <div class="flex items-center gap-6">
         <a class="hover:text-green-600" href="/" data-link>Aculei_Forest</a>
-        <a class="hover:text-green-600 text-xs" href="/about" data-link>About</a>
-        <a class="hover:text-green-600 text-xs" href="/" data-link>Doc</a>
+        <a class="hover:text-green-600 text-xs" href="/about.html" data-link>About</a>
+        <a class="hover:text-green-600 text-xs" 
+          href="https://aculei-forest-doc.onrender.com" 
+          target="_blank" 
+          rel="noopener noreferrer">
+          Doc
+        </a>
          <a href="https://github.com/mussida/Computer-Graphics" class="hover:text-green-600 text-xs">
           Github
         </a>       
       </div>
-      
-    </div>
       <div class="text-xs flex-col gap-1 items-end sm:flex hidden">
-        <a href="">awniyoussef3@gmail.com</a>
-        <a href="">Mat: 12349531</a>  
+        <a href="mailto:youssefawni.hanna@studio.unibo.it">youssefawni.hanna@studio.unibo.it</a>
+        <a href="">Mat: 0001132285</a>  
       </div>
     </nav>
-    <div id="content"></div>
-  <script src="routes.js" defer></script>
+  <div
+    id="sidebar"
+    class="absolute top-20 left-0 ml-8 transform -translate-x-full transition-transform duration-300 ease-in-out max-h-[calc(100vh_-_8rem)] mt-16 mb-16 flex items-center overflow-x-scroll"
+  >
+  <div
+    class="overflow-y-auto flex flex-col items-start gap-3 w-80 p-8 bg-green-800/30 backdrop-blur-sm z-10 text-sm/6 font-medium text-green-700 border border-green-500 rounded"
+  >
+    <div class="flex justify-between items-center w-full">
+      <label for="lightPosY">Light Position Y:</label>
+      <input
+        type="range"
+        id="lightPosY"
+        min="-20"
+        max="50"
+        value="3.5"
+        step="0.1"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="lightPosX">Light Position X:</label>
+      <input
+        type="range"
+        id="lightPosX"
+        min="-20"
+        max="20"
+        value="5.5"
+        step="0.1"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="lightPosZ">Light Position Z:</label>
+      <input
+        type="range"
+        id="lightPosZ"
+        min="-20"
+        max="20"
+        value="-14.6"
+        step="0.1"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="distance">Distance:</label>
+      <input
+        type="range"
+        id="distance"
+        min="7"
+        max="40"
+        value="24"
+        step="1"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="theta">Theta:</label>
+      <input
+        type="range"
+        id="theta"
+        min="0"
+        max="3.14"
+        step="1"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="phi">Phi:</label>
+      <input
+        type="range"
+        id="phi"
+        min="0.1"
+        max="1.47"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="near">Near:</label>
+      <input
+        type="range"
+        id="near"
+        min="1"
+        max="10"
+        value="1"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="far">Far:</label>
+      <input
+        type="range"
+        id="far"
+        min="1"
+        max="100"
+        value="100"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+    <div class="flex justify-between items-center w-full">
+      <label for="fovy">Fovy:</label>
+      <input
+        type="range"
+        id="fovy"
+        min="10"
+        max="120"
+        value="5"
+        class="ml-2 accent-green-500"
+      />
+    </div>
+  </div>
+  <button
+    class="bg-green-800/30 text-green-500 border-r border-y border-green-500 rounded-tr rounded-br p-1 cursor-pointer hover:bg-green-800/40 hover:text-green-600"
+    onclick="toggleSidebar()"
+  >
+    <svg
+      id="arrow-icon"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke-width="1.5"
+      stroke="currentColor"
+      class="size-3"
+    >
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        d="m8.25 4.5 7.5 7.5-7.5 7.5"
+      />
+    </svg>
+  </button>
+</div>
+<div
+  class="sm:flex hidden justify-between gap-3 p-5 z-50 font-mono text-green-700 bg-black/40 absolute w-full bottom-0 text-xs flex-wrap"
+>
+      <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="wildBoar"/>
+        <span class="hidden sm:block">Wild Boar</span>
+        <span class="sm:hidden">
+          <img src="assets/Assets/wild-boar.svg" alt="Descrizione immagine" />
+        </span>
+      </label>
+       <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="fox001"/>
+        <span class="hidden sm:block">Fox001</span>
+        <span class="sm:hidden">
+          <img src="assets/Assets/fox.svg" alt="Descrizione immagine" />
+        </span>
+      </label>
+      <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="fox002" />
+        <span class="hidden sm:block">Fox002</span>
+        <span class="sm:hidden">
+          <img src="assets/Assets/fox.svg" alt="Descrizione immagine" />
+        </span>      
+      </label>
+       <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="horseFlash"/>
+        <span class="hidden sm:block"> Varcon the horse</span>
+        <span class="sm:hidden">
+          <img src="assets/Assets/horse.svg" alt="Descrizione immagine" />
+        </span>
+      </label>
+      <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="pony"/>
+        <span class="hidden sm:block">Nery the pony</span>
+        <span class="sm:hidden">
+          <img src="assets/Assets/pony.svg" alt="Descrizione immagine" />
+    </label>
+     <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="horseEye"/>
+         <span class="hidden sm:block"> Varcon's eye</span>
+        <span class="sm:hidden">
+          <img src="assets/Assets/horse.svg" alt="Descrizione immagine" />
+        </span>
+      </label>
+       <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="fawn"/>
+        <span class="hidden sm:block">Deer + Porcupine</span>
+        <span class="sm:hidden class flex gap-1">
+          <img src="assets/Assets/deer.svg" alt="Descrizione immagine" /> + <img src="assets/Assets/porcupine.svg" alt="Descrizione immagine" />
+        </span>
+      </label>
+    <label class="flex items-center gap-1 cursor-pointer">
+        <input class="appearance-none rounded-full sm:h-4 sm:w-4 min-h-3 min-w-3 bg-transparent
+             focus:ring-0 focus:ring-offset-0 checked:bg-green-700
+             border-green-900 border-2" type="checkbox" data-light-key="falcon"/>
+        <span class="hidden sm:block">Falcon + Badger</span>
+        <span class="sm:hidden class flex items-center gap-1">
+          <img src="assets/Assets/bird.svg" alt="Descrizione immagine" />
+          + <img src="assets/Assets/badger.svg" alt="Descrizione immagine" />
+      </label>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+
   <script src="main.js" defer></script>
-  <script></script>
   </body>
 </html>

@@ -22,11 +22,11 @@ async function main() {
   gl.enable(gl.DEPTH_TEST);
 
   // Variabili per l'interazione con il moodello
-  let lightPos = [5.5, 3.5, -14.6];
+  let lightPos = [20, 17.5, 14.5];
   let defaultLightPos = lightPos;
-  let distance = 24;
-  let theta = 3.14;
-  let phi = 0.274532925199433;
+  let distance = 5;
+  let theta = 0.87;
+  let phi = 0.36;
   let near = 1;
   let far = 100;
   let fovy = 5;
@@ -149,83 +149,6 @@ async function main() {
   }
 `;
 
-  const fsLantern = `
-  precision highp float;
-
-    varying vec3 v_normal;
-    varying vec3 v_surfaceToView;
-    varying vec3 vertPos;
-    varying vec2 v_texcoord;
-    varying vec4 v_color;
-
-    uniform vec3 lightPos;
-    uniform vec3 u_ambientLight;
-    uniform float shininessAmbient;
-    
-    uniform vec3 diffuse;
-    uniform vec3 ambient;
-    uniform vec3 emissive;
-    uniform vec3 specular;
-    uniform float shininess;
-    uniform float opacity;
-
-    uniform float Ka;
-    uniform float Kd;
-    uniform float Ks;
-
-    uniform int mode;
-
-    uniform sampler2D diffuseMap;
-    uniform sampler2D specularMap;
-
-    void main () {
-      vec3 N = normalize(v_normal);
-      vec3 L = normalize(lightPos - vertPos);
-      float lambertian = max(dot(N, L), 0.0);
-      float specularLight = 0.0;
-
-      if (lambertian > 0.0) {
-          vec3 R = reflect(-L, N);      // Reflected light vector
-          vec3 V = normalize(-vertPos); // Vector to viewer
-          float specAngle = max(dot(R, V), 0.0);
-          specularLight = pow(specAngle, shininessAmbient);
-      }
-
-      // Leggi la mappa di diffusione e combina con il colore dell'oggetto
-      vec4 diffuseMapColor = texture2D(diffuseMap, v_texcoord);
-      vec3 effectiveDiffuse = diffuse * diffuseMapColor.rgb * v_color.rgb;
-
-      // Leggi la mappa di specularità
-      vec4 specularMapColor = texture2D(specularMap, v_texcoord);
-      vec3 effectiveSpecular = specularMapColor.rgb * specularLight * specular;
-
-      vec2 st = gl_FragCoord.xy / vec2(1000.0, 1000.0);
-
-      vec2 center = vec2(0.5, 0.5);
-
-      // Euclidean distance from center
-      float dist = distance(st, center);
-
-      // Create a soft circular glow, gradual falloff from center 0.0 to 0.5
-      float glow = 1.0 - smoothstep(0.0, 0.5, dist);
-
-      vec3 color = vec3(1,1,1) * glow;
-
-      // Add a brighter core, gradual falloff from center 0.1 to 0.0
-      color += vec3(1.0, 0.8, 0.8) * smoothstep(0.1, 0.0, dist);
-
-      // gl_FragColor = vec4(color, 1.0);
-
-      // Calcola il colore finale
-      gl_FragColor = vec4(
-        Ka * ambient + 
-        Kd * lambertian * effectiveDiffuse + 
-        Ks * effectiveSpecular + emissive, 
-        diffuseMapColor.a * v_color.a * opacity 
-      );
-  }
-  `;
-
   document.addEventListener("DOMContentLoaded", function () {
     const checkboxes = document.querySelectorAll("input[type='checkbox']");
     checkboxes.forEach((checkbox) => {
@@ -345,7 +268,7 @@ async function main() {
       e.preventDefault();
       const zoomSpeed = 0.2;
       if (
-        distance - e.deltaY * zoomSpeed > 7 &&
+        distance - e.deltaY * zoomSpeed > 4 &&
         distance - e.deltaY * zoomSpeed < 40
       ) {
         distance -= e.deltaY * zoomSpeed;
@@ -358,30 +281,36 @@ async function main() {
   // Gestione degli input range e aggiornamento delle variabili
   const lightPosYTag = document.getElementById("lightPosY");
   lightPosYTag.addEventListener("input", (event) => {
+    console.log(event.target.value);
     lightPos[1] = parseFloat(event.target.value);
   });
   const lightPosXTag = document.getElementById("lightPosX");
   lightPosXTag.addEventListener("input", (event) => {
+    console.log(event.target.value);
     lightPos[0] = parseFloat(event.target.value);
   });
   const lightPosZTag = document.getElementById("lightPosZ");
   lightPosZTag.addEventListener("input", (event) => {
+    console.log(event.target.value);
     lightPos[2] = parseFloat(event.target.value);
   });
   const distanceTag = document.getElementById("distance");
   distanceTag.addEventListener("input", (event) => {
+    console.log(event.target.value);
     distance = parseFloat(event.target.value);
   });
   const thetaTag = document.getElementById("theta");
   thetaTag.step = dr;
-  thetaTag.value = 3.14;
+  thetaTag.value = 0.87;
   thetaTag.addEventListener("input", (event) => {
+    console.log(event.target.value);
     theta = parseFloat(event.target.value);
   });
   phiTag = document.getElementById("phi");
   phiTag.step = dr;
-  phiTag.value = 0.274532925199433;
+  phiTag.value = 0.36;
   phiTag.addEventListener("input", (event) => {
+    console.log(event.target.value);
     phi = parseFloat(event.target.value);
   });
   nearTag = document.getElementById("near");
@@ -399,19 +328,11 @@ async function main() {
 
   // Compilazione dei programmi shader
   const meshProgramInfo = webglUtils.createProgramInfo(gl, [vs, fs]);
-  const meshProgramInfoLantern = webglUtils.createProgramInfo(gl, [
-    vs,
-    fsLantern,
-  ]);
 
   // Caricamento due modelli
-  const forest = await loadModel(gl, "assets/Aculei_Forest/Aculei_Forest.obj");
-  const lanterns = await loadModel(gl, "assets/Lantern/Lantern.obj");
+  const forest = await loadModel(gl, "assets/Me/Me.obj");
 
-  const complexModel = [
-    { model: forest, programInfo: meshProgramInfo },
-    { model: lanterns, programInfo: meshProgramInfoLantern },
-  ];
+  const complexModel = [{ model: forest, programInfo: meshProgramInfo }];
 
   // Render function
   function render() {
