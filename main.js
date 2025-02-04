@@ -25,6 +25,7 @@ async function main() {
   let lightPos = [5.5, 3.5, -14.6];
   let defaultLightPos = lightPos;
   let distance = 24;
+  let initialDistance = 0;
   let theta = 3.14;
   let phi = 0.274532925199433;
   let near = 1;
@@ -257,6 +258,12 @@ async function main() {
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
   });
+
+  function getDistance(touch1, touch2) {
+    let dx = touch1.clientX - touch2.clientX;
+    let dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
 
   canvas.addEventListener("touchstart", (e) => {
     e.preventDefault();

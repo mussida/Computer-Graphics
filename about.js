@@ -25,6 +25,7 @@ async function main() {
   let lightPos = [20, 17.5, 14.5];
   let defaultLightPos = lightPos;
   let distance = 5;
+  let initialDistance = 0;
   let theta = 0.87;
   let phi = 0.36;
   let near = 1;
@@ -209,19 +210,35 @@ async function main() {
 
   canvas.addEventListener("touchmove", (e) => {
     if (mouseDown) {
-      const dx = e.touches[0].clientX - lastMouseX;
-      const dy = e.touches[0].clientY - lastMouseY;
+      if (e.touches.length === 1) {
+        const dx = e.touches[0].clientX - lastMouseX;
+        const dy = e.touches[0].clientY - lastMouseY;
 
-      if (phi + dy * 0.01 <= Math.PI / 2 - 0.1 && phi + dy * 0.01 > 0) {
-        phi += dy * 0.01;
-        phiTag.value = phi;
+        if (phi + dy * 0.01 <= Math.PI / 2 - 0.1 && phi + dy * 0.01 > 0) {
+          phi += dy * 0.01;
+          phiTag.value = phi;
+        }
+
+        theta -= dx * 0.01;
+        thetaTag.value = theta;
+
+        lastMouseX = e.touches[0].clientX;
+        lastMouseY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        const d1 = getDistance(e.touches[0], e.touches[1]);
+        if (initialDistance === 0) {
+          initialDistance = d1;
+        }
+        const zoomSpeed = 0.2;
+        if (
+          distance - (d1 - initialDistance) * zoomSpeed > 4 &&
+          distance - (d1 - initialDistance) * zoomSpeed < 40
+        ) {
+          distance -= (d1 - initialDistance) * zoomSpeed;
+          distanceTag.value = distance;
+        }
+        initialDistance = d1;
       }
-
-      theta -= dx * 0.01;
-      thetaTag.value = theta;
-
-      lastMouseX = e.touches[0].clientX;
-      lastMouseY = e.touches[0].clientY;
     }
   });
 
