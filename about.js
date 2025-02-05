@@ -118,8 +118,8 @@ async function main() {
     float specularLight = 0.0;
 
     if (lambertian > 0.0) {
-        vec3 R = reflect(-L, N);      // Reflected light vector
-        vec3 V = normalize(-vertPos); // Vector to viewer
+        vec3 R = reflect(-L, N);    
+        vec3 V = normalize(-vertPos);
         float specAngle = max(dot(R, V), 0.0);
         specularLight = pow(specAngle, shininessAmbient);
     }

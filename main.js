@@ -120,8 +120,8 @@ async function main() {
     float specularLight = 0.0;
 
     if (lambertian > 0.0) {
-        vec3 R = reflect(-L, N);      // Reflected light vector
-        vec3 V = normalize(-vertPos); // Vector to viewer
+        vec3 R = reflect(-L, N);  
+        vec3 V = normalize(-vertPos);
         float specAngle = max(dot(R, V), 0.0);
         specularLight = pow(specAngle, shininessAmbient);
     }
@@ -141,14 +141,6 @@ async function main() {
       Ks * effectiveSpecular + emissive, 
       diffuseMapColor.a * v_color.a * opacity 
     );
-
-   // only ambient
-  if(mode == 2) gl_FragColor = vec4(Ka * u_ambientLight, 1.0);
-  // only diffuse
-  if(mode == 3) gl_FragColor = vec4(Kd * lambertian * diffuse, 1.0);
-  // only specular
-  if(mode == 4) gl_FragColor = vec4(Ks * specularLight * specular, 1.0);
-
   }
 `;
 
@@ -188,8 +180,8 @@ async function main() {
       float specularLight = 0.0;
 
       if (lambertian > 0.0) {
-          vec3 R = reflect(-L, N);      // Reflected light vector
-          vec3 V = normalize(-vertPos); // Vector to viewer
+          vec3 R = reflect(-L, N);     
+          vec3 V = normalize(-vertPos);
           float specAngle = max(dot(R, V), 0.0);
           specularLight = pow(specAngle, shininessAmbient);
       }
