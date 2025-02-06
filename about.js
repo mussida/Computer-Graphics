@@ -30,7 +30,7 @@ async function main() {
   let phi = 0.36;
   let near = 1;
   let far = 100;
-  let fovy = 5;
+  let fovy = 100;
   var dr = (5.0 * Math.PI) / 180.0;
 
   // Luci per gli animali
@@ -360,7 +360,7 @@ async function main() {
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    const fieldOfViewRadians = degToRad(100);
+    const fieldOfViewRadians = degToRad(fovy);
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const projection = m4.perspective(fieldOfViewRadians, aspect, near, far);
 
@@ -375,8 +375,6 @@ async function main() {
     view = m4.inverse(camera);
 
     var worldMatrix = m4.identity();
-    const worldInverseMatrix = m4.inverse(worldMatrix);
-    const worldInverseTransposeMatrix = m4.transpose(worldInverseMatrix);
 
     const sharedUniforms = {
       u_view: view,
@@ -396,8 +394,7 @@ async function main() {
       webglUtils.setUniforms(model.programInfo, sharedUniforms);
       webglUtils.setUniforms(model.programInfo, {
         u_world: worldMatrix,
-        u_worldInverseTranspose: worldInverseTransposeMatrix,
-        diffuse: [1, 0.7, 0.5, 1],
+        diffuse: [1, 0.7, 0.5],
       });
       for (const { material, bufferInfo } of model.model.parts) {
         webglUtils.setUniforms(model.programInfo, {
