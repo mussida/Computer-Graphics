@@ -24,7 +24,7 @@ async function main() {
   gl.enable(gl.DEPTH_TEST);
 
   // Variabili per l'interazione con il moodello
-  let lightPos = [5.5, 3.5, -14.6];
+  let lightPos = [-20, 8, 20];
   let defaultLightPos = lightPos;
   let distance = 24;
   let initialDistance = 0;
@@ -68,6 +68,8 @@ async function main() {
   uniform mat4 u_world;
   uniform vec3 u_viewWorldPosition;
 
+  uniform mat4 normalMat;
+
   varying vec3 v_normal;
   varying vec3 v_surfaceToView;
   varying vec2 v_texcoord;
@@ -76,8 +78,9 @@ async function main() {
 
   void main() {
     vec4 vertPos4 = u_world * vec4(a_position, 1.0); 
-    vertPos = vec3(vertPos4) / vertPos4.w;            
-    v_normal = vec3(u_world * vec4(a_normal, 0.0));   
+    vertPos = vec3(vertPos4) / vertPos4.w;
+    v_normal = vec3(normalMat * vec4(a_normal, 0.0));
+    // v_normal = vec3(u_world * vec4(a_normal, 0.0));   
     gl_Position = u_projection * u_view * vertPos4;   
     v_texcoord = a_texcoord;
     v_color = a_color;
@@ -460,6 +463,8 @@ async function main() {
     view = m4.inverse(camera);
 
     var worldMatrix = m4.identity();
+    var modelViewMatrix = m4.multiply(view, worldMatrix);
+    var modelViewTranspose = m4.transpose(m4.inverse(modelViewMatrix));
 
     const sharedUniforms = {
       u_view: view,
@@ -487,6 +492,7 @@ async function main() {
           mode: 1,
           diffuseMap: material.diffuseMap,
           specularMap: material.specularMap,
+          normalMat: modelViewTranspose,
         });
         webglUtils.setBuffersAndAttributes(gl, model.programInfo, bufferInfo);
         webglUtils.drawBufferInfo(gl, bufferInfo);
